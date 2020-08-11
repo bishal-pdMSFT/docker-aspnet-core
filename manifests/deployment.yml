@@ -1,0 +1,16 @@
+apiVersion : apps/v1beta1
+kind: Deployment
+metadata:
+  name: "bishalakstest-5d3e"
+spec:
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: "bishalakstest-5d3e"
+    spec:
+      containers:
+        - name: "bishalakstest-5d3e"
+          image: "bishalakstestacr.azurecr.io/bishalakstest"
+          ports:
+          - containerPort: 80
