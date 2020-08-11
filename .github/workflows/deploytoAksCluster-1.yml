@@ -1,0 +1,50 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: bishalakstestacr.azurecr.io
+        username: ${{ secrets.acr_bishalakstestacr_username }}
+        password: ${{ secrets.acr_bishalakstestacr_password }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/Application/aspnet-core-dotnet-core" -f  "Application/aspnet-core-dotnet-core/Dockerfile" -t bishalakstestacr.azurecr.io/bishalakstestv15:${{ github.sha }}
+        docker push bishalakstestacr.azurecr.io/bishalakstestv15:${{ github.sha }}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.aks_bishalakstestv15_kubeConfig }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep bishalakstestv159c2b | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace bishalakstestv159c2b`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: bishalakstestv159c2b
+        container-registry-url: bishalakstestacr.azurecr.io
+        container-registry-username: ${{ secrets.acr_bishalakstestacr_username }}
+        container-registry-password: ${{ secrets.acr_bishalakstestacr_password }}
+        secret-name: bishalakstesdockerauth
+       
+    - uses: azure/k8s-deploy@v1
+      with:
+        namespace: bishalakstestv159c2b
+        manifests: |
+          manifests/deployment-1.yml
+          manifests/service-1.yml
+        images: |
+          bishalakstestacr.azurecr.io/bishalakstestv15:${{ github.sha }}
+        imagepullsecrets: |
+          bishalakstesdockerauth
